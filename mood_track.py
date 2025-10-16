@@ -15,7 +15,6 @@ nltk.download('omw-1.4')
 def clean_text(text):
     text = re.sub(r'@[\w]*', '', text)  # Remove mentions
     text = re.sub('[^a-zA-Z#]', ' ', text)  # Remove non-alphabet characters
-  #  text = ' '.join([w for w in text.split() if len(w) > 3])  # Remove short words
     text = text.lower()  # Convert to lowercase
     lemmatizer = WordNetLemmatizer()
     text = ' '.join([lemmatizer.lemmatize(word) for word in text.split()])  # Lemmatize words
@@ -37,6 +36,13 @@ st.title("Track your mOOd")
 input_text = st.text_area("Enter a text:")
 cleaned_text = clean_text(input_text)
 
+# Initialize session state variables
+if 'show_correct_label' not in st.session_state:
+    st.session_state.show_correct_label = False
+
+if 'prediction' not in st.session_state:
+    st.session_state.prediction = None
+
 if st.button("Classify"):
     if len(cleaned_text) == 0:
         st.write("Please enter some text.")
@@ -48,6 +54,7 @@ if st.button("Classify"):
         # Make a prediction
         prediction = model_rnn.predict(padded_sequence)
         predicted_label = np.argmax(prediction, axis=-1)
+        st.session_state.prediction = predicted_label[0]
 
         # Define the label mapping based on your training labels
         labels = {0: "Anger", 1: "Fear", 2: "Joy", 3: "Neutral", 4: "Sadness"}
@@ -55,8 +62,23 @@ if st.button("Classify"):
         # Output the predicted label
         st.write(f"Sentiment: {labels[predicted_label[0]]}")
 
-        # Debugging output
-        st.write(f"Cleaned Text: {cleaned_text}")
-        st.write(f"Padded Sequence: {padded_sequence}")
-        st.write(f"Prediction Raw Output: {prediction}")
-        st.write(f"Predicted Label Index: {predicted_label[0]}")
+        # Reset show_correct_label
+        st.session_state.show_correct_label = False
+
+        # Feedback buttons
+        st.write("Was this prediction correct?")
+        yes_clicked = st.button("Yes")
+        no_clicked = st.button("No")
+
+        if yes_clicked:
+            st.write("Great! Glad the prediction was accurate.")
+            st.session_state.show_correct_label = False
+
+        if no_clicked:
+            st.session_state.show_correct_label = True
+
+# Show the correct label selection if No was clicked
+if st.session_state.show_correct_label:
+    labels = {0: "Anger", 1: "Fear", 2: "Joy", 3: "Neutral", 4: "Sadness"}
+    correct_label = st.selectbox("Select the correct label:", list(labels.values()))
+    st.write(f"Correct label selected: {correct_label}")
